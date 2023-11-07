@@ -5,19 +5,74 @@ import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+# the variable neighborhood search algorithm for the p-median problem implementation from the paper "A Variable Neighborhood Search Algorithm for the p-Median Problem" of Mladenovic and Hansen (1997)
+
+# Move evaluation procedure
+# In the next procedure called Move, the change w in the objective
+# function value is evaluated when the facility that is added (denoted with goin) to the current
+# solution is known, while the best one to be dropped (denoted with goout) is to be found. 
+# c1: the median (closest facility) of user i, i=1,...,n (cluster)
+# c2: second closest facility of user i, i=1,...,n (cluster)
+# d: distance (or cost) between user i and facility j, i=1,...,n, j=1,...,m
+# goin: index of inserted facility (input value)
+# w: change in the objective function value obtained by the best interchange
+# x_curr(i), i = 1,..., p: current solution (indice of medians)
+# v(j): change in the objective function value obtained by deleting each facility currently in the solution, (j= x_curr(l), l=1,...,p)
+# goout: index of deleted facility (output value)
+def move(c1: np.ndarray, c2: np.ndarray, d: np.ndarray, x_curr:np.ndarray, goin: int, p: int, n: int):
+    w = 0
+    goout = 0
+    v = np.zeros(p)
+    # Best deletion
+
+    # for each user i, i=1,...,n
+    for i in range(n):
+        # if the distance btw user i and the goin facility is less than the distance btw user i and the second closest facility
+        if d[i, goin] < d[i, c2[i]]:
+            w = w + d[i, goin] - d[i, c1[i]]
+
+        else:
+            v[c1[i]] = v[c1[i]] + min(d[i, goin], d[i, c2[i]]) - d[i, c1[i]]
+    
+    # fing g = min{v[x_curr(l)], l=1,...,p})]} and facility goout (index x_curr(l) where this minimum is reached)
+    g = np.min(v[x_curr])
+    goout = np.argmin(v[x_curr])
+    w = w + g
+
+    return goout, w
+
+# test the move function
+def test_move():
+    c1 = np.array([0, 1, 2, 3, 4])
+    c2 = np.array([1, 0, 1, 2, 3])
+    d = np.array([[0, 1, 2, 3, 4],
+                    [1, 0, 1, 2, 3],
+                    [2, 1, 0, 1, 2],
+                    [3, 2, 1, 0, 1],
+                    [4, 3, 2, 1, 0]])
+    x_curr = np.array([0, 1, 2, 3, 4])
+    goin = 0
+    p = 5
+    n = 5
+    goout, w = move(c1, c2, d, x_curr, goin, p, n)
+    print('goout: ' + str(goout))
+    print('w: ' + str(w))
+
+
+
+
 
 
 def vns_p_median(distances: np.ndarray, p: int, k_max: int, biomass: np.ndarray) -> List[int]:
     n = distances.shape[0]
     # Step 1: Generate an initial solution
-    x = np.zeros(n, dtype=int)
+    x = np.zeros(p, dtype=int)
     indices = np.arange(n)
     np.random.shuffle(indices)
     x[indices[:p]] = 1
     k=1
     # Step 2: Local search
     while k < k_max:
-        print('k = ' + str(k))
         # Step 2.1: Shake
         x_new = shake(x, k)
 
@@ -110,6 +165,10 @@ year = '2010'
 distances = distance_matrix.to_numpy()[:n, :n]
 biomass = biomass_history[year].to_numpy()[:n]
 
+
+test_move()
+
+"""
 solution, cost = vns_p_median(distances, p, k_max, biomass)
 
 connections = np.argmin(distances[:, solution], axis=1)
@@ -137,3 +196,4 @@ plt.annotate('Cost = ' + str(cost), xy=(0.05, 0.85), xycoords='axes fraction', f
 plt.xlabel('x')
 plt.ylabel('y')
 plt.show()
+"""
