@@ -29,7 +29,10 @@ def move(c1: np.ndarray, c2: np.ndarray, d: np.ndarray, x_cur:np.ndarray, goin: 
             w = w + d[i, goin] - d[i, c1[i]]
 
         else:
-            v[c1[i]] = v[c1[i]] + min(d[i, goin], d[i, c2[i]]) - d[i, c1[i]]
+            j = np.where(x_cur == c1[i])[0].squeeze()
+            v[j] = v[j] + d[i, c2[i]] - d[i, c1[i]]
+
+    
     
     # fing g = min{v[x_curr(l)], l=1,...,p})]} and facility goout (index x_curr(l) where this minimum is reached)
     g = np.min(v)
@@ -38,44 +41,114 @@ def move(c1: np.ndarray, c2: np.ndarray, d: np.ndarray, x_cur:np.ndarray, goin: 
 
     return goout, w
 
-# test the move function
-def test_move():
-    c1 = np.array([0, 1, 2, 3, 4])
-    c2 = np.array([1, 0, 1, 2, 3])
-    d = np.array([[0, 1, 2, 3, 4],
-                    [1, 0, 1, 2, 3],
-                    [2, 1, 0, 1, 2],
-                    [3, 2, 1, 0, 1],
-                    [4, 3, 2, 1, 0]])
-    x_curr = np.array([0, 1, 2, 3, 4])
-    goin = 0
-    p = 5
-    n = 5
-    goout, w = move(c1, c2, d, x_curr, goin, p, n)
-    print('goout: ' + str(goout))
-    print('w: ' + str(w))
 
+"""This function is used to update the current solution x_curr,
+the closest facility c1 and the second closest facility c2 
+when the best interchange is accepted."""
+def update(x, d, goin , goout, n, p, c1, c2):
+    # for each user i, i=1,...,n
+    for i in range(n):
+        d_i_sorted = np.argsort(d[i, x])
+        # if goout is the closest facility to user i
+        if c1[i] == goout:
+            # if goin is closer to user i than the second closest facility
+            if d[i, goin] <= d[i, c2[i]]:
+                c1[i] = np.argwhere(x == goin).squeeze()
+            else:
+                c1[i] = c2[i]
+                # find second closest facility to user i
+                c2[i] = d_i_sorted[1]
 
+            
+        else:
+            # if goin is closer to user i than the closest facility
+            if d[i, goin] < d[i, c1[i]]:
+                # then goin becomes the closest facility to user i
+                c2[i] = c1[i]
+                c1[i] = np.argwhere(x == goin).squeeze()
+            # if goin is closer to user i than the second closest facility
+            elif d[i, goin] < d[i, c2[i]]:
+                # then goin becomes the second closest facility to user i
+                c2[i] = np.argwhere(x == goin).squeeze()
+            # if goout is the second closest facility to user i
+            elif c2[i] == goout:
+                # find second closest facility to user i
+                # find center l' where d(i, l) is minimum (for l = 1,...,p, l != c1(i))
+                c2[i] = d_i_sorted[1]
 
+    return c1, c2
 
+def fast_interchange(x, c1, c2, d, p, n):
+    # get all possible medians except the ones in x
+    x_all = np.arange(n) # all possible medians
+     # possible medians except the ones in x
+    max_iter = 1000
+    iter = 0
+    while iter < max_iter:
+        x_rest = np.setdiff1d(x_all, x)
+        
+        _w = np.inf
 
+        for goin in x_rest:
+            goout, w = move(c1, c2, d, x, goin, p, n)
+            if w < _w:
+                _w = w
+                _goin = goin
+                _goout = goout
+        if _w >= 0:
+            break
+
+        # interchange position of x(_goout) with x(_goin)
+        x[_goout] = _goin
+
+        # update c1 and c2
+        c1, c2 = update(x, d, _goin, _goout, n, p, c1, c2)
+
+        iter += 1
+
+    return x, c1, c2
+
+def calculate_cost(x, c1, d, n):
+    cost = 0
+    for i in range(n):
+        cost += d[i, x[c1[i]]]
+    return cost
 
 def vns_p_median(distances: np.ndarray, p: int, k_max: int) -> List[int]:
     n = distances.shape[0]
-    # Step 1: Generate an initial solution
-    x = np.zeros(p, dtype=int)
-    indices = np.arange(n)
-    np.random.shuffle(indices)
-    x[indices[:p]] = 1
-    k=1
-    # Step 2: Local search
+    # Initialization
+    """Find arrays x_opt, c1 and c2 and f_opt as in initialization
+    of the Interchange heuristic."""
+    x_all = np.random.permutation(n)
+    x_opt = x_all[:p]
+    c1 = np.zeros(n, dtype=int)
+    c2 = np.zeros(n, dtype=int)
+    
+    c1 = np.argpartition(distances[:, x_opt], 1, axis=1)[:, 0]
+    c2 = np.argpartition(distances[:, x_opt], 1, axis=1)[:, 1]
+    f_opt = calculate_cost(x_opt, c1, distances, n)
+    f_cur = f_opt
+    x_cur = x_opt.copy()
+    c1_cur = c1.copy()
+    c2_cur = c2.copy()
+
+    print("[*] Initialization")
+    print(f"Current cost: {f_cur},\n Current Solution: {x_cur}, Current c1: {c1_cur}, Current c2: {c2_cur}\n")
+    # Step 1:
+    k = 1
+    # Step 2:
+    iter = 0
     while k < k_max:
         print(f"[{iter}] Iteration")
         # Step 2.1: Shake
-        x_new = shake(x, k)
+        x_cur, f_cur, c1_cur, c2_cur = shake(x_cur, k, c1_cur, c2_cur, f_cur, distances)
+        f_cur = calculate_cost(x_cur, c1_cur, distances, n)
+        print(f"  -> Shaking done. Current cost: {f_cur}, Current Solution: {x_cur}, Current c1: {c1_cur}, Current c2: {c2_cur}")
 
         # Step 2.2: Local search
-        x_new = local_search_p_median(distances, x_new, p, biomass)
+        x_cur, c1_cur, c2_cur = local_search(x_cur, c1_cur, c2_cur,distances, p, n)
+        f_cur = calculate_cost(x_cur, c1_cur, distances, n)
+        print(f"  -> Local search done. Current cost: {f_cur}, Current Solution: {x_cur}, Current c1: {c1_cur}, Current c2: {c2_cur}")
 
         # Step 2.3: Acceptance criterion
         if f_cur < f_opt:
@@ -87,74 +160,86 @@ def vns_p_median(distances: np.ndarray, p: int, k_max: int) -> List[int]:
 
         else:
             k += 1
-        # tqdm update
+
+        print(f"  -> Best cost: {f_opt}, k: {k}\n")
+        
+
+        iter +=1
+
     # Step 3: Return the best solution found
-    return np.where(x == 1)[0].tolist(), objective_function_p_median(distances, x, biomass)
+    return dict(solution=x_opt, cost=f_opt, c1=c1)
 
 def shake(x: np.ndarray, k: int, c1, c2, f_cur, d) -> np.ndarray:
     """Shake procedure: generate a new solution x_new by randomly
     removing k facilities from the current solution x."""
     x_new = x.copy()
-    indices = np.where(x == 1)[0]
-    np.random.shuffle(indices)
+    for j in range(1, k+1):
+        # take goin at random
+        goin = np.random.randint(n)
+        # find goout and w
+        goout, w = move(c1, c2, d, x_new, goin, p, n)
+
+        #update x
+        if goin not in x_new:
+            x_new[goout] = goin
+
+        # find c1_cur and c2_cur for such interchange using update function
+        c1_cur, c2_cur = update(x_new, d, goin, goout, n, p, c1, c2)
+        # update f_cur 
+        f_cur = f_cur + w
+
+    return x_new, f_cur, c1_cur, c2_cur
+
+def local_search(x, c1, c2, d, p, n):
+    # apply the interchange heuristic without the initialization step
+
+    return fast_interchange(x, c1, c2, d, p, n)
+
+def test_vns(distances, n, m, p, k_max):
+
+    # run the algorithm
+    solution = vns_p_median(distances, p, k_max)
+    cost = solution['cost']
+    c1 = solution['c1']
+    solution = solution['solution']
+
+
+    # print solution
+    print('Solution:')
+    print(solution)
+
+    print('Objective function value:')
+    print(cost)
+
     
-    x_new[indices[:k]] = 0
-    x_new[indices[k:]] = 1
+    return solution, cost, c1
 
-    return x_new
+def plot_solution(solution, cost, c1, biomass_history, n):
+    # plot solution
+    sns.set_style('whitegrid')
+    sns.set_context('paper')
+    sns.set(font_scale=1.1, font='Cambria')
 
-def local_search_p_median(distances: np.ndarray, x: np.ndarray, p: int, biomass: np.ndarray) -> np.ndarray:
-    n = distances.shape[0]
-    l=1
-    l_max = 5
-    iter=0
-    iter_max=500
-    while l <= l_max:
-        # Step 1: Find the p medians
-        medians = np.where(x == 1)[0]
-        
-        # Step 2: Assign each point to the closest median
-        clusters = np.argmin(distances[:, medians], axis=1)
-        # Step 3: Compute the new medians   
-        for i in range(p):
-            if np.sum(clusters == i) > 0:
+    longitude = biomass_history['Longitude'][:n]
+    latitude = biomass_history['Latitude'][:n]
 
-                # get the distances between the points in the cluster and the other points in the cluster
-                cluster_distances = distances[np.logical_or(clusters == i, clusters == i+l), :][:, np.logical_or(clusters == i, clusters == i+l)]
-                # get the new median by computing the point that minimizes the sum of the distances to the other points in the cluster
-                # the axis =1 because we want the sum of the distances to the other points in the cluster
-                # if the axis = 0, we would have the sum of the distances to the other points in the cluster for each point
-                new_median = np.argmin(np.sum(cluster_distances, axis=1))
-                print(np.sum(cluster_distances, axis=0))
-                print(np.sum(cluster_distances, axis=0).shape)
-                # get the minimum median that not exists in the medians list
-                medians[i]= new_median
+    plt.figure(figsize=(12, 8))
+    plt.scatter(longitude, latitude, s=12)
+    plt.scatter(longitude[solution], latitude[solution], s=25, c='r', label='Medians', marker='s')
+    # plot the connections
+    for i in range(n):
+        plt.plot([longitude[i], longitude[c1[i]]], [latitude[i], latitude[c1[i]]], c='black', linewidth=0.4)
+    
+    plt.annotate('p = ' + str(p), xy=(0.05, 0.95), xycoords='axes fraction', fontsize=15)
+    plt.annotate('k_max = ' + str(k_max), xy=(0.05, 0.9), xycoords='axes fraction', fontsize=15)
+    plt.annotate('Cost = ' + str(cost), xy=(0.05, 0.85), xycoords='axes fraction', fontsize=15)
+    # plot the connections
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.show()
 
-            
-        # Step 4: Update the solution
-        x_new = np.zeros(n, dtype=int)
-        x_new[medians] = 1
-        if objective_function_p_median(distances, x_new, biomass) < objective_function_p_median(distances, x, biomass):
-            x = x_new
-            l = 1
-        else:
-            l += 1
-        
-        iter += 1
-        if iter >= iter_max:
-            break
-    return x
 
-def objective_function_p_median(distances: np.ndarray, x: np.ndarray, biomass: np.ndarray) -> float:
-    medians = np.where(x == 1)[0]
-    # pega todas as linhas da matriz de distancias e as colunas correspondentes às medianas
-    # assim, temos uma matriz de distancias de cada ponto para cada mediana
-    # então, pegamos o índice do eixo 1 (colunas, gerando n_rows elementos) que corresponde à menor distância de cada ponto para cada mediana
-    clusters = np.argmin(distances[:, medians], axis=1)
-    costs = biomass.reshape(-1, 1) * distances
-    obj_func = np.sum(costs[clusters, np.arange(len(clusters))])
-    print('Objective function value: ' + str(obj_func))
-    return obj_func
+
 
 distance_matrix = pd.read_csv('dataset/Distance_Matrix.csv').drop('Unnamed: 0', axis=1)
 biomass_history = pd.read_csv('dataset/Biomass_History.csv')
@@ -163,15 +248,15 @@ biomass_history = pd.read_csv('dataset/Biomass_History.csv')
 p = 10
 
 # Set the maximum number of iterations for the VNS algorithm
-k_max = 10
-n = 2417
-year = '2010'
+k_max = 8
+n = 50
+year = '2011'
 distances = distance_matrix.to_numpy()[:n, :n]
 biomass = biomass_history[year].to_numpy()[:n]
 cost_matrix = biomass * distances
 
-
-test_move()
+solution, cost, c1 = test_vns(cost_matrix, n, n, p, k_max)
+plot_solution(solution, cost, c1, biomass_history, n)
 
 """
 solution, cost = vns_p_median(distances, p, k_max, biomass)
