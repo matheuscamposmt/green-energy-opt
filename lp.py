@@ -3,6 +3,7 @@ from typing import List
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import networkx as nx
 # the variable neighborhood search algorithm for the p-median problem implementation from the paper "A Variable Neighborhood Search Algorithm for the p-Median Problem" of Mladenovic and Hansen (1997)
 
 # Move evaluation procedure
@@ -82,29 +83,29 @@ def fast_interchange(x, c1, c2, d, p, n):
     # get all possible medians except the ones in x
     x_all = np.arange(n) # all possible medians
      # possible medians except the ones in x
-    max_iter = 1000
-    iter = 0
-    while iter < max_iter:
+    _w = np.inf
+    
+
+    while True:
         x_rest = np.setdiff1d(x_all, x)
         
-        _w = np.inf
-
+        find_better = False
         for goin in x_rest:
             goout, w = move(c1, c2, d, x, goin, p, n)
             if w < _w:
                 _w = w
                 _goin = goin
                 _goout = goout
-        if _w >= 0:
+                find_better = True
+        
+        
+        if not find_better:
             break
-
         # interchange position of x(_goout) with x(_goin)
         x[_goout] = _goin
 
         # update c1 and c2
         c1, c2 = update(x, d, _goin, _goout, n, p, c1, c2)
-
-        iter += 1
 
     return x, c1, c2
 
@@ -214,28 +215,35 @@ def test_vns(distances, n, m, p, k_max):
     
     return solution, cost, c1
 
+import matplotlib.pyplot as plt
+
 def plot_solution(solution, cost, c1, biomass_history, n):
-    # plot solution
-    sns.set_style('whitegrid')
-    sns.set_context('paper')
-    sns.set(font_scale=1.1, font='Cambria')
+    # Create a directed graph
+    G = nx.DiGraph()
 
-    longitude = biomass_history['Longitude'][:n]
-    latitude = biomass_history['Latitude'][:n]
-
-    plt.figure(figsize=(12, 8))
-    plt.scatter(longitude, latitude, s=12)
-    plt.scatter(longitude[solution], latitude[solution], s=25, c='r', label='Medians', marker='s')
-    # plot the connections
+    # Add nodes to the graph
     for i in range(n):
-        plt.plot([longitude[i], longitude[c1[i]]], [latitude[i], latitude[c1[i]]], c='black', linewidth=0.4)
-    
-    plt.annotate('p = ' + str(p), xy=(0.05, 0.95), xycoords='axes fraction', fontsize=15)
-    plt.annotate('k_max = ' + str(k_max), xy=(0.05, 0.9), xycoords='axes fraction', fontsize=15)
-    plt.annotate('Cost = ' + str(cost), xy=(0.05, 0.85), xycoords='axes fraction', fontsize=15)
-    # plot the connections
-    plt.xlabel('x')
-    plt.ylabel('y')
+        G.add_node(i)
+
+    # Add edges to the graph
+    for i in range(n):
+        G.add_edge(i, solution[c1[i]])
+
+    # Set node positions based on longitude and latitude
+    pos = {}
+    for i in range(n):
+        pos[i] = (biomass_history['Longitude'][i], biomass_history['Latitude'][i])
+
+    # Plot the graph
+    plt.figure(figsize=(12, 8))
+    nx.draw_networkx(G, pos, with_labels=False, node_size=12, node_color='b', edge_color='black', width=0.4, arrows=True)
+    nx.draw_networkx_nodes(G, pos, nodelist=solution, node_size=40, node_color='r', node_shape='s')
+    plt.title('Solution')
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.annotate(f'p = {p}', xy=(0.02, 0.95), xycoords='axes fraction', fontsize=10)
+    plt.annotate(f'k_max = {k_max}', xy=(0.02, 0.9), xycoords='axes fraction', fontsize=10)
+    plt.annotate(f'Cost = {cost:.4f}', xy=(0.02, 0.85), xycoords='axes fraction', fontsize=10)
     plt.show()
 
 
