@@ -289,7 +289,7 @@ def plot_depots(full_biomass, depot_locations, adj_matrix, y_forecast, y_actual,
     #plt.scatter(full_biomass['lon'].iloc[possible_locations], full_biomass['lat'].iloc[possible_locations], c='black', s=30, label='Possible Locations')
 
     # Plot all biomass locations in blue
-    plt.scatter(full_biomass['lon'], full_biomass['lat'], c=y_forecast, cmap='jet', s=20, label='Biomass Locations')
+    plt.scatter(full_biomass['lon'], full_biomass['lat'], c=y_actual, cmap='jet', s=20, label='Biomass Locations')
     # plot the map with colormap of the biomass
     plt.colorbar()
 
