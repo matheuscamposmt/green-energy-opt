@@ -102,7 +102,7 @@ Trained various machine learning models to forecast biomass at the 2418 harvesti
 
 ### Depot Location Optimization
 
-1. **Problem Definition**: Formulated the problem of selecting depot locations to minimize total cost, including biomass collection and transportation costs.
+1. **Problem Definition**: Selecting depot locations to minimize total cost, including biomass collection and transportation costs.
 2. **Algorithm Design**: Developed a hybrid algorithm combining Simulated Annealing and Variable Neighborhood Search to find the optimal depot locations.
 3. **Implementation**: Implemented the algorithm in `optimization/optimization.py`.
 4. **Results**: The algorithm successfully identified optimal depot locations, resulting in significant cost savings.
