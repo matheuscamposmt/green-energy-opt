@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
-from .cost_functions import total_cost
+from .cost_functions import total_cost, cost_of_forecast, cost_of_underutilization, cost_of_transportation
 
 BIOMASS = pd.read_csv('dataset/Biomass_History.csv')
+DIST_MATRIX = pd.read_csv('dataset/Distance_Matrix.csv', index_col=0)
 
 def gaussian_2d(n, depot_locations, k):
     # Assuming 'biomass' and 'best_adj_matrix' are already defined
@@ -265,3 +266,59 @@ class SimulatedAnnealing:
         print("Final Best Solution Cost:", best_cost)
 
         return best_solution, best_cost
+    
+
+def plot_depots(full_biomass, depot_locations, adj_matrix, y_forecast, y_actual, title='Depot optimized locations'):
+    """
+    Plots the connections of a specified depot and displays the utilization of each depot.
+
+    Parameters:
+    - full_biomass (pd.DataFrame): DataFrame containing 'lon' and 'lat' columns for locations.
+    - possible_locations (list or array-like): Indices of possible locations.
+    - depot_locations (list or array-like): Indices of depot locations.
+    - adj_matrix (np.ndarray): Adjacency matrix indicating connections between locations.
+    - y_forecast_2018 (np.ndarray): Forecast data for utilization calculation.
+    - depot_index (int): Index of the depot to plot connections for (default is 0).
+
+    Returns:
+    - None
+    """
+    plt.figure(figsize=(12, 7))
+
+    # Plot possible locations in black
+    #plt.scatter(full_biomass['lon'].iloc[possible_locations], full_biomass['lat'].iloc[possible_locations], c='black', s=30, label='Possible Locations')
+
+    # Plot all biomass locations in blue
+    plt.scatter(full_biomass['lon'], full_biomass['lat'], c=y_forecast, cmap='jet', s=20, label='Biomass Locations')
+    # plot the map with colormap of the biomass
+    plt.colorbar()
+
+
+    #conns = 0
+    # Plot connections from specified depot
+    #for connection in np.where(adj_matrix[:, depot_locations[depot_index]] > 0 )[0]:
+    #    plt.plot([full_biomass['lon'].iloc[depot_locations[depot_index]], full_biomass['lon'].iloc[connection]], 
+    #             [full_biomass['lat'].iloc[depot_locations[depot_index]], full_biomass['lat'].iloc[connection]], 
+    #             color='black', alpha=0.4)
+    #    conns += 1
+        
+    #print(f"Connections from depot {depot_index}: {conns}")
+
+    # Plot depot locations in red
+    plt.scatter(full_biomass['lon'].iloc[depot_locations], full_biomass['lat'].iloc[depot_locations], c='red', s=60, label='Depot Locations', marker='s')
+
+
+    # Write the depot % utilization of every depot
+    plt.text(68.5, 24.7, f"Cost of forecast={cost_of_forecast(y_actual, y_forecast):.2f}", fontsize=12)
+    plt.text(68.5, 24.5, f"Cost of underutilization={cost_of_underutilization(adj_matrix, y_forecast):,.2f}", fontsize=12)
+    plt.text(68.5, 24.3, f"Cost of transportation={cost_of_transportation(DIST_MATRIX, y_forecast, adj_matrix):.2f}", fontsize=12)
+    plt.text(68.5, 24.1, f"Total cost={total_cost(DIST_MATRIX, y_actual, y_forecast, adj_matrix):.2f}", fontsize=12)
+
+    #print a list of all depots biomass capacity
+    # Improve plot aesthetics
+    plt.title(title)
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.legend(loc='lower left')
+
+    plt.show()
