@@ -116,7 +116,7 @@ Trained various machine learning models to forecast biomass at the 2418 harvesti
 
 ## Main Results
 
-- The XGBoost model achieved satisfactory error in forecasting biomass availability, with a MAE of 32.05 in 2018 and 36.85 in 2019.
+- The XGBoost model achieved satisfactory error in forecasting biomass availability, with a **MAE** of **32.05** in 2018 and **36.85** in 2019.
 - The hybrid optimization algorithm reduced the total cost of biofuel production by **34.45%** for 2018 and **34.86%** for 2019 compared to greedy methods.
 
 | Year | Greedy cost | Best cost | Reduction (%) |
