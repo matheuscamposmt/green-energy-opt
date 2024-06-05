@@ -19,7 +19,7 @@ This project was inspired by the [Shell AI Hackathon 2023 - Waste to Energy](htt
 
 ## Overview
 
-This project leverages **Machine Learning** and **Optimization** techniques to minimize the cost of biofuel production in Gujarat, India. The project involves forecasting biomass availability at 2418 harvesting sites using machine learning models and selecting optimal depot locations using a hybrid Simulated Annealing and Variable Neighborhood Search algorithm. The primary goal is to minimize the total cost of biofuel production optimizing the supply chain, which includes the cost of biomass collection and transportation.
+This project leverages **Machine Learning** and **Optimization** techniques to minimize the cost of biofuel production in Gujarat, India. The project involves forecasting biomass annual production at 2418 harvesting sites using machine learning models and selecting optimal depot locations using a hybrid Simulated Annealing and Variable Neighborhood Search algorithm. The primary goal is to minimize the total cost of biofuel production optimizing the supply chain, which includes the cost of biomass collection and transportation.
 
 <p align="center">
   <img src="assets/supply_chain.png" width="950" />
